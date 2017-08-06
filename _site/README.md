@@ -1,2 +1,0 @@
-# joyhao.github.io
-blog
