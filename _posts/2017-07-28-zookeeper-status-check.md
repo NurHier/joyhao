@@ -1,7 +1,12 @@
-﻿
-# zookeeper状态查看工具
+---
+layout: post
+title: zookeeper状态查看工具
+categories: articles
+tags: [zookeeper]
+comments: true
+description: 本工具用于查看zookeeper集群的运行状态和节点的角色,脚本运行的机器需要可免密码登录到各个zk节点。
+---
 
-------
 本工具用于查看zookeeper集群的运行状态和节点的角色，并选中leader节点，通过 `echo mntr|nc ${leaderIP} ${zkPort}`  获取集群的信息。
 脚本运行的机器需要可**免密码登录**到各个zk节点。
 
