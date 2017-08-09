@@ -162,7 +162,6 @@
 }
 
 .post-link {
-  display: block;
   font-size: 28px;//42px;
 }
 
@@ -181,8 +180,8 @@
 }
 
 .post-title {
-  font-size: 38px;//42px;
-  letter-spacing: -1px;
+  font-size: 28px;//42px;
+  /*letter-spacing: -1px;*/
   line-height: 1;
 
   @include media-query($on-laptop) {
