@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000">
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top">
+  
+  
+  <title>gulp编译maven生成版本号解决静态资源缓存问题 | Blog</title>
+  <meta name="description" content="问题描述浏览器的缓存机制导致修改后的js或css文件重新部署发布后未生效 现在项目开发结构多为前后端分离，此种结构使用前端构建工具(gulp, webpack)编译发布时生成版本号并添加，方便快捷，容易实现。对于前后端混合，未使用前端构建工具，开发人员以后端开发为主的项目，不宜使用前端构建工具，本文主要针对此类项目给出解决方案。 解决方法解决问题的关键点有两个：  如何生成版本号 页面中如何获取到">
+<meta name="keywords" content="gulp,maven">
+<meta property="og:type" content="article">
+<meta property="og:title" content="gulp编译maven生成版本号解决静态资源缓存问题">
+<meta property="og:url" content="http://nurhier.github.io/2018/02/22/add-version-for-static-resource/index.html">
+<meta property="og:site_name" content="NurHier的日志">
+<meta property="og:description" content="问题描述浏览器的缓存机制导致修改后的js或css文件重新部署发布后未生效 现在项目开发结构多为前后端分离，此种结构使用前端构建工具(gulp, webpack)编译发布时生成版本号并添加，方便快捷，容易实现。对于前后端混合，未使用前端构建工具，开发人员以后端开发为主的项目，不宜使用前端构建工具，本文主要针对此类项目给出解决方案。 解决方法解决问题的关键点有两个：  如何生成版本号 页面中如何获取到">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-08-28T09:00:03.296Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="gulp编译maven生成版本号解决静态资源缓存问题">
+<meta name="twitter:description" content="问题描述浏览器的缓存机制导致修改后的js或css文件重新部署发布后未生效 现在项目开发结构多为前后端分离，此种结构使用前端构建工具(gulp, webpack)编译发布时生成版本号并添加，方便快捷，容易实现。对于前后端混合，未使用前端构建工具，开发人员以后端开发为主的项目，不宜使用前端构建工具，本文主要针对此类项目给出解决方案。 解决方法解决问题的关键点有两个：  如何生成版本号 页面中如何获取到">
+  <!-- Canonical links -->
+  <link rel="canonical" href="http://nurhier.github.io/2018/02/22/add-version-for-static-resource/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="NurHier的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+  
+  
+  
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1.4.0/dist/gitalk.min.css">
+  
+</head>
+
+
+<body class="main-center theme-black" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://github.com/nurhier" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">NurHier</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md">Developer &amp; Designer</h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Beijing, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav ">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/nurhier" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="https://twitter.com/JoyHao08" target="_blank" title="Twitter" data-toggle=tooltip data-placement=top><i class="icon icon-twitter"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      <div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/云计算/">云计算</a><span class="category-list-count">3</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/云计算/运维/">运维</a><span class="category-list-count">2</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/前端开发/">前端开发</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/日志收集/">日志收集</a><span class="category-list-count">1</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/docker/">docker</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elk/">elk</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gulp/">gulp</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/kubernetes/">kubernetes</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/maven/">maven</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/zookeeper/">zookeeper</a><span class="tag-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/docker/" style="font-size: 14px;">docker</a> <a href="/tags/elk/" style="font-size: 13px;">elk</a> <a href="/tags/gulp/" style="font-size: 13px;">gulp</a> <a href="/tags/kubernetes/" style="font-size: 13px;">kubernetes</a> <a href="/tags/maven/" style="font-size: 13px;">maven</a> <a href="/tags/redis/" style="font-size: 13px;">redis</a> <a href="/tags/zookeeper/" style="font-size: 14px;">zookeeper</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">二月 2018</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">八月 2017</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">七月 2017</a><span class="archive-list-count">3</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled no-thumbnail">
+        
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/日志收集/">日志收集</a>
+              </p>
+              <p class="item-title">
+                <a href="/2020/08/28/docker-install-elk/" class="title">1.ELK日志收集-Docker部署ELKF日志收集</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-08-28T05:07:35.000Z" itemprop="datePublished">2020-08-28</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/前端开发/">前端开发</a>
+              </p>
+              <p class="item-title">
+                <a href="/2018/02/22/add-version-for-static-resource/" class="title">gulp编译maven生成版本号解决静态资源缓存问题</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2018-02-22T10:42:35.000Z" itemprop="datePublished">2018-02-22</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/08/03/kubernetes-deploy-redis-cluster/" class="title">使用kubernetes部署redis cluster</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-08-03T14:42:35.000Z" itemprop="datePublished">2017-08-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a><i class="icon icon-angle-right"></i><a class="category-link" href="/categories/云计算/运维/">运维</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/07/19/migrate-zookeeper/" class="title">zookeeper集群在线迁移</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-07-19T12:45:23.000Z" itemprop="datePublished">2017-07-19</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a><i class="icon icon-angle-right"></i><a class="category-link" href="/categories/云计算/运维/">运维</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/07/19/zookeeper-status-check/" class="title">zookeeper状态查看工具</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-07-19T12:42:35.000Z" itemprop="datePublished">2017-07-19</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-add-version-for-static-resource" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      gulp编译maven生成版本号解决静态资源缓存问题
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/2018/02/22/add-version-for-static-resource/" class="article-date">
+	  <time datetime="2018-02-22T10:42:35.000Z" itemprop="datePublished">2018-02-22</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/前端开发/">前端开发</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/gulp/">gulp</a>, <a class="article-tag-link" href="/tags/maven/">maven</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/2018/02/22/add-version-for-static-resource/#comments" class="article-comment-link">评论</a></span>
+        
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h3 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h3><p>浏览器的缓存机制导致修改后的js或css文件重新部署发布后未生效</p>
+<p>现在项目开发结构多为前后端分离，此种结构使用前端构建工具(gulp, webpack)编译发布时生成版本号并添加，方便快捷，容易实现。<br>对于前后端混合，未使用前端构建工具，开发人员以后端开发为主的项目，不宜使用前端构建工具，本文主要针对此类项目给出解决方案。</p>
+<h3 id="解决方法"><a href="#解决方法" class="headerlink" title="解决方法"></a>解决方法</h3><p>解决问题的关键点有两个：</p>
+<ol>
+<li>如何生成版本号</li>
+<li>页面中如何获取到版本号<h4 id="如何生成版本号"><a href="#如何生成版本号" class="headerlink" title="如何生成版本号"></a>如何生成版本号</h4></li>
+<li>使用统一的版本号，如发布日期、代码提交id、迭代版本等</li>
+<li>计算每个静态资源文件的hash值，将hash值作为版本号</li>
+</ol>
+<h4 id="页面中如何获取到版本号"><a href="#页面中如何获取到版本号" class="headerlink" title="页面中如何获取到版本号"></a>页面中如何获取到版本号</h4><ol>
+<li>如果使用统一的版本号可将版本号定义成变量。一处修改，全部使用</li>
+<li>如果使用文件hash值，需要每次编译页面文件，写入hash值版本号</li>
+</ol>
+<h3 id="本文使用方法"><a href="#本文使用方法" class="headerlink" title="本文使用方法"></a>本文使用方法</h3><ol>
+<li><p>本文中使用gulp一次性编译由于jsp文件，将页面中的静态资源链接修改为 ‘? + 参数’，如：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;script type=<span class="string">"text/javascript"</span> src=<span class="string">"/js/common.js?v=$&#123;sourceVersion&#125;"</span>&gt;&lt;/script&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>npm安装包</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">npm install --save-dev gulp  </span><br><span class="line">npm install --save-dev gulp-rev  </span><br><span class="line">npm install --save-dev gulp-rev-collector  </span><br><span class="line">npm install --save-dev gulp-asset-rev  </span><br><span class="line">npm install --save-dev run-sequence</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>gulpfile.js</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> gulp = <span class="built_in">require</span>(<span class="string">'gulp'</span>),</span><br><span class="line">	runSequence = <span class="built_in">require</span>(<span class="string">'run-sequence'</span>),</span><br><span class="line">	clean = <span class="built_in">require</span>(<span class="string">'gulp-clean'</span>),</span><br><span class="line">	rev = <span class="built_in">require</span>(<span class="string">'gulp-rev'</span>),</span><br><span class="line">	revCollector = <span class="built_in">require</span>(<span class="string">'gulp-rev-collector'</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 待编译文件路径</span></span><br><span class="line"><span class="keyword">const</span> jsUrl = [<span class="string">'js/**/*.js'</span>,<span class="string">'!js/jquery*/**/*.js'</span>,<span class="string">'!js/echarts/**/*.js'</span>,<span class="string">'!js/selectWindow/**/*.js'</span>,<span class="string">'!js/lightbox2/**/*.js'</span>,<span class="string">'!js/sumoselect/**/*.js'</span>];</span><br><span class="line"><span class="keyword">const</span> cssUrl = [<span class="string">'css/**/*.css'</span>, <span class="string">'!css/zTreeStyle.css'</span>];</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'cleanRev'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> gulp.src(<span class="string">'dist/rev'</span>, &#123;<span class="attr">read</span>: <span class="literal">false</span>&#125;)</span><br><span class="line">				.pipe(clean());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'cleanWebApp'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> gulp.src(<span class="string">'dist/webapp'</span>, &#123;<span class="attr">read</span>: <span class="literal">false</span>&#125;)</span><br><span class="line">				.pipe(clean());</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'revCss'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> gulp.src(cssUrl)</span><br><span class="line">				.pipe(rev())</span><br><span class="line">				.pipe(rev.manifest())</span><br><span class="line">				.pipe(gulp.dest(<span class="string">'dist/rev/css'</span>));</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'revJs'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> gulp.src(jsUrl)</span><br><span class="line">				.pipe(rev())</span><br><span class="line">				.pipe(rev.manifest())</span><br><span class="line">				.pipe(gulp.dest(<span class="string">'dist/rev/json'</span>));</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'rev'</span>, <span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> gulp.src([<span class="string">'dist/rev/**/*.json'</span>, <span class="string">'**/*.jsp'</span>])</span><br><span class="line">				.pipe(revCollector(&#123;</span><br><span class="line">					replaceReved: <span class="literal">false</span></span><br><span class="line">				&#125;))</span><br><span class="line">				.pipe(gulp.dest(<span class="string">'dist/webapp/'</span>));</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'dev'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">done</span>) </span>&#123;</span><br><span class="line">	runSequence([<span class="string">'cleanRev'</span>], [<span class="string">'cleanWebApp'</span>], [<span class="string">'revCss'</span>], [<span class="string">'revJs'</span>], [<span class="string">'rev'</span>], done);</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">gulp.task(<span class="string">'default'</span>, [<span class="string">'dev'</span>]);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改npm的包中的index.js源文件，因为默认的版本号不是“？+参数”形式</p>
+</li>
+<li><p>maven插件获取git commit id作为版本号</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">	&lt;groupId&gt;org.codehaus.mojo&lt;/groupId&gt;</span><br><span class="line">	&lt;artifactId&gt;buildnumber-maven-plugin&lt;/artifactId&gt;</span><br><span class="line">	&lt;version&gt;1.4&lt;/version&gt;</span><br><span class="line">	&lt;executions&gt;</span><br><span class="line">		&lt;execution&gt;</span><br><span class="line">			&lt;phase&gt;validate&lt;/phase&gt;</span><br><span class="line">			&lt;goals&gt;</span><br><span class="line">				&lt;goal&gt;create&lt;/goal&gt;</span><br><span class="line">			&lt;/goals&gt;</span><br><span class="line">		&lt;/execution&gt;</span><br><span class="line">	&lt;/executions&gt;</span><br><span class="line"> &lt;/plugin&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>properies文件获取变量值</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sourceVersion=$&#123;buildNumber&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="http://nurhier.github.io/2018/02/22/add-version-for-static-resource/" title="gulp编译maven生成版本号解决静态资源缓存问题" target="_blank" rel="external">http://nurhier.github.io/2018/02/22/add-version-for-static-resource/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://github.com/nurhier" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h3 class="media-heading"><a href="https://github.com/nurhier" target="_blank"><span class="text-dark">NurHier</span><small class="ml-1x">Developer &amp; Designer</small></a></h3>
+        <div>个人简介。</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+  <section id="comments">
+  	
+           
+    
+  </section>
+
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/2020/08/28/docker-install-elk/" title="1.ELK日志收集-Docker部署ELKF日志收集"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/2017/08/03/kubernetes-deploy-redis-cluster/" title="使用kubernetes部署redis cluster"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  <footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/nurhier" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="https://twitter.com/JoyHao08" target="_blank" title="Twitter" data-toggle=tooltip data-placement=top><i class="icon icon-twitter"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2020 NurHier
+        
+        <div class="publishby">
+        	Theme by <a href="https://github.com/cofess" target="_blank"> cofess </a>base on <a href="https://github.com/cofess/hexo-theme-pure" target="_blank">pure</a>.
+        </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+<script src="/js/plugin.min.js"></script>
+<script src="/js/application.js"></script>
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+<script src="/js/insight.js"></script>
+
+
+
+
+
+   
+
+
+
+
+   
+    
+  <!-- <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css"> -->
+  <script src="//cdn.jsdelivr.net/npm/gitalk@1.4.0/dist/gitalk.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+  <script type="text/javascript">
+  var gitalk = new Gitalk({
+    clientID: '31ae4f78238d89deeb26',
+    clientSecret: '090ddeb8eefb27caa0e8bdc6f7ad7cd83277e720',
+    repo: 'nurhier.github.io',
+    owner: 'nurhier',
+    admin: ['nurhier'],
+    id: md5(location.pathname),
+    distractionFreeMode: true
+  })
+  gitalk.render('comments')
+  </script>
+
+      
+
+
+
+
+
+
+
+</body>
+</html>

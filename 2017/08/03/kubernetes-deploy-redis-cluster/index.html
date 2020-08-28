@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000">
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top">
+  
+  
+  <title>使用kubernetes部署redis cluster | Blog</title>
+  <meta name="description" content="介绍使用kubernetes部署3主3从的redis cluster，为保证redis 的master和slave实例分布到不同的node上，至少需要2个node节点。 部署方案将redis cluster部署到docker中，使用kubernetes管理docker集群，可以依靠kubernetes的一些特性实现redis cluster的node节点选取，宕机恢复等工作。kubernetes：">
+<meta name="keywords" content="docker,kubernetes,redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用kubernetes部署redis cluster">
+<meta property="og:url" content="http://nurhier.github.io/2017/08/03/kubernetes-deploy-redis-cluster/index.html">
+<meta property="og:site_name" content="NurHier的日志">
+<meta property="og:description" content="介绍使用kubernetes部署3主3从的redis cluster，为保证redis 的master和slave实例分布到不同的node上，至少需要2个node节点。 部署方案将redis cluster部署到docker中，使用kubernetes管理docker集群，可以依靠kubernetes的一些特性实现redis cluster的node节点选取，宕机恢复等工作。kubernetes：">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-08-28T09:00:03.296Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="使用kubernetes部署redis cluster">
+<meta name="twitter:description" content="介绍使用kubernetes部署3主3从的redis cluster，为保证redis 的master和slave实例分布到不同的node上，至少需要2个node节点。 部署方案将redis cluster部署到docker中，使用kubernetes管理docker集群，可以依靠kubernetes的一些特性实现redis cluster的node节点选取，宕机恢复等工作。kubernetes：">
+  <!-- Canonical links -->
+  <link rel="canonical" href="http://nurhier.github.io/2017/08/03/kubernetes-deploy-redis-cluster/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="NurHier的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+  
+  
+  
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1.4.0/dist/gitalk.min.css">
+  
+</head>
+
+
+<body class="main-center theme-black" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://github.com/nurhier" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">NurHier</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md">Developer &amp; Designer</h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Beijing, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav ">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/nurhier" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="https://twitter.com/JoyHao08" target="_blank" title="Twitter" data-toggle=tooltip data-placement=top><i class="icon icon-twitter"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      <div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/云计算/">云计算</a><span class="category-list-count">3</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/云计算/运维/">运维</a><span class="category-list-count">2</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/前端开发/">前端开发</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/日志收集/">日志收集</a><span class="category-list-count">1</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/docker/">docker</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elk/">elk</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gulp/">gulp</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/kubernetes/">kubernetes</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/maven/">maven</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/zookeeper/">zookeeper</a><span class="tag-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/docker/" style="font-size: 14px;">docker</a> <a href="/tags/elk/" style="font-size: 13px;">elk</a> <a href="/tags/gulp/" style="font-size: 13px;">gulp</a> <a href="/tags/kubernetes/" style="font-size: 13px;">kubernetes</a> <a href="/tags/maven/" style="font-size: 13px;">maven</a> <a href="/tags/redis/" style="font-size: 13px;">redis</a> <a href="/tags/zookeeper/" style="font-size: 14px;">zookeeper</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">二月 2018</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">八月 2017</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">七月 2017</a><span class="archive-list-count">3</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled no-thumbnail">
+        
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/日志收集/">日志收集</a>
+              </p>
+              <p class="item-title">
+                <a href="/2020/08/28/docker-install-elk/" class="title">1.ELK日志收集-Docker部署ELKF日志收集</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-08-28T05:07:35.000Z" itemprop="datePublished">2020-08-28</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/前端开发/">前端开发</a>
+              </p>
+              <p class="item-title">
+                <a href="/2018/02/22/add-version-for-static-resource/" class="title">gulp编译maven生成版本号解决静态资源缓存问题</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2018-02-22T10:42:35.000Z" itemprop="datePublished">2018-02-22</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/08/03/kubernetes-deploy-redis-cluster/" class="title">使用kubernetes部署redis cluster</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-08-03T14:42:35.000Z" itemprop="datePublished">2017-08-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a><i class="icon icon-angle-right"></i><a class="category-link" href="/categories/云计算/运维/">运维</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/07/19/migrate-zookeeper/" class="title">zookeeper集群在线迁移</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-07-19T12:45:23.000Z" itemprop="datePublished">2017-07-19</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a><i class="icon icon-angle-right"></i><a class="category-link" href="/categories/云计算/运维/">运维</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/07/19/zookeeper-status-check/" class="title">zookeeper状态查看工具</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-07-19T12:42:35.000Z" itemprop="datePublished">2017-07-19</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-kubernetes-deploy-redis-cluster" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      使用kubernetes部署redis cluster
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/2017/08/03/kubernetes-deploy-redis-cluster/" class="article-date">
+	  <time datetime="2017-08-03T14:42:35.000Z" itemprop="datePublished">2017-08-03</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/云计算/">云计算</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/docker/">docker</a>, <a class="article-tag-link" href="/tags/kubernetes/">kubernetes</a>, <a class="article-tag-link" href="/tags/redis/">redis</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/2017/08/03/kubernetes-deploy-redis-cluster/#comments" class="article-comment-link">评论</a></span>
+        
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><p>使用kubernetes部署3主3从的redis cluster，为保证redis 的master和slave实例分布到不同的node上，至少需要2个node节点。</p>
+<h3 id="部署方案"><a href="#部署方案" class="headerlink" title="部署方案"></a>部署方案</h3><p>将redis cluster部署到docker中，使用kubernetes管理docker集群，可以依靠kubernetes的一些特性实现redis cluster的node节点选取，宕机恢复等工作。<br>kubernetes：</p>
+<ol>
+<li>使用kubernetes 的ReplicaSet类型，此类型为ReplicationController的升级版，更好的支持selector，且当redis cluster 扩容缩容时修改RS配置后相应的pod不会重启导致redis实例异常</li>
+<li>创建2个pod副本，2个副本分布作为master和slave。使用kubernetes的pod反亲和性将2个副本部署到不同node上。</li>
+<li>使用环境变量配置redis实例需要的port、maxmemory、requirepass等信息，并可以写入到docker容器中，使redis.conf生效</li>
+<li>kubernetes中限制docker容器的cpu和内存</li>
+<li>redis cluster规范中建议使用docker host网络模式，网络损耗小，且易于管理</li>
+<li>由于redis可持久化，所以实例的持久化文件需要通过hostPath方式挂载到docker的宿主机上，以便用于恢复</li>
+</ol>
+<p>docker：</p>
+<ol>
+<li>docker镜像中打包 redis server</li>
+<li>在docker容器中使用<a href="https://github.com/jwilder/dockerize" target="_blank" rel="noopener">dockerize</a>生成redis.conf文件</li>
+</ol>
+<h3 id="部署流程"><a href="#部署流程" class="headerlink" title="部署流程"></a>部署流程</h3><h4 id="1-部署环境和版本"><a href="#1-部署环境和版本" class="headerlink" title="1. 部署环境和版本"></a>1. 部署环境和版本</h4><table>
+<thead>
+<tr>
+<th style="text-align:center">node ip</th>
+<th style="text-align:center">用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">10.10.0.1</td>
+<td style="text-align:center">kubernetes master</td>
+</tr>
+<tr>
+<td style="text-align:center">10.10.0.2</td>
+<td style="text-align:center">kubernetes proxy</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">server</th>
+<th style="text-align:center">version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">docker</td>
+<td style="text-align:center">1.12.3</td>
+</tr>
+<tr>
+<td style="text-align:left">kubernetes</td>
+<td style="text-align:center">1.6.4</td>
+</tr>
+<tr>
+<td style="text-align:left">redis</td>
+<td style="text-align:center">3.2.9</td>
+</tr>
+</tbody>
+</table>
+<h4 id="2-制作docker镜像"><a href="#2-制作docker镜像" class="headerlink" title="2. 制作docker镜像"></a>2. 制作docker镜像</h4><p>编写dockerfile，其中使用 dockerize插件通过redis.tmpl模板生成redis.conf配置文件<br><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">FROM</span> <span class="attr">centos:7</span></span><br><span class="line"><span class="string">MAINTAINER</span> <span class="string">The</span> <span class="string">centos</span> <span class="string">project</span> <span class="string">for</span> <span class="string">redis</span></span><br><span class="line"><span class="string">ENV</span> <span class="string">REDIS_VERSION</span> <span class="number">3.2</span><span class="number">.9</span></span><br><span class="line"><span class="string">COPY</span> <span class="string">dockerize</span> <span class="string">/usr/local/bin/</span></span><br><span class="line"><span class="string">COPY</span> <span class="string">redis.tmpl</span> <span class="string">/opt/</span></span><br><span class="line"><span class="string">COPY</span> <span class="string">redis-3.2.9</span> <span class="string">/opt/redis-3.2.9</span></span><br><span class="line"><span class="string">RUN</span> <span class="string">mkdir</span> <span class="bullet">-p</span> <span class="string">/opt/data</span></span><br></pre></td></tr></table></figure></p>
+<p>redis.tmpl<br><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">bind</span> <span class="number">0.0</span><span class="number">.0</span><span class="number">.0</span></span><br><span class="line"><span class="string">protected-mode</span> <span class="literal">no</span></span><br><span class="line"><span class="string">port</span> <span class="string">&#123;&#123;</span> <span class="string">.Env.REDIS_PORT</span> <span class="string">&#125;&#125;</span></span><br><span class="line"><span class="string">tcp-backlog</span> <span class="number">511</span></span><br><span class="line"><span class="string">timeout</span> <span class="number">0</span></span><br><span class="line"><span class="string">tcp-keepalive</span> <span class="number">300</span></span><br><span class="line"><span class="string">daemonize</span> <span class="literal">no</span></span><br><span class="line"><span class="string">supervised</span> <span class="literal">no</span></span><br><span class="line"><span class="string">pidfile</span> <span class="string">/var/run/redis.pid</span></span><br><span class="line"><span class="string">loglevel</span> <span class="string">notice</span></span><br><span class="line"><span class="string">logfile</span> <span class="string">"/opt/data/logs/<span class="template-variable">&#123;&#123; .Env.REDIS_CLUSTER_ID &#125;&#125;</span>_redis.log"</span></span><br><span class="line"><span class="string">databases</span> <span class="number">16</span></span><br><span class="line"><span class="string">save</span> <span class="number">900</span> <span class="number">1</span></span><br><span class="line"><span class="string">save</span> <span class="number">300</span> <span class="number">10</span></span><br><span class="line"><span class="string">save</span> <span class="number">60</span> <span class="number">10000</span></span><br><span class="line"><span class="string">stop-writes-on-bgsave-error</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">rdbcompression</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">rdbchecksum</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">dbfilename</span> <span class="string">&#123;&#123;</span> <span class="string">.Env.REDIS_CLUSTER_ID</span> <span class="string">&#125;&#125;_dump.rdb</span></span><br><span class="line"><span class="string">dir</span> <span class="string">/opt/data/dump</span></span><br><span class="line"><span class="string">masterauth</span> <span class="string">&#123;&#123;</span> <span class="string">default</span> <span class="string">.Env.REDIS_PASS</span> <span class="string">"sohuRedis"</span><span class="string">&#125;&#125;</span></span><br><span class="line"><span class="string">slave-serve-stale-data</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">slave-read-only</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">repl-diskless-sync</span> <span class="literal">no</span></span><br><span class="line"><span class="string">repl-diskless-sync-delay</span> <span class="number">5</span></span><br><span class="line"><span class="string">repl-disable-tcp-nodelay</span> <span class="literal">no</span></span><br><span class="line"><span class="string">slave-priority</span> <span class="number">100</span></span><br><span class="line"><span class="string">requirepass</span> <span class="string">&#123;&#123;</span> <span class="string">default</span> <span class="string">.Env.REDIS_PASS</span> <span class="string">"sohuRedis"</span> <span class="string">&#125;&#125;</span></span><br><span class="line"><span class="string">appendonly</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">appendfilename</span> <span class="string">"<span class="template-variable">&#123;&#123; .Env.REDIS_CLUSTER_ID &#125;&#125;</span>_appendonly.aof"</span></span><br><span class="line"><span class="string">appendfsync</span> <span class="string">everysec</span></span><br><span class="line"><span class="string">maxmemory</span> <span class="string">&#123;&#123;</span> <span class="string">default</span> <span class="string">.Env.REDIS_MAXMEM</span> <span class="string">"8589934592"</span> <span class="string">&#125;&#125;</span></span><br><span class="line"><span class="string">maxmemory-policy</span> <span class="string">&#123;&#123;</span> <span class="string">default</span> <span class="string">.Env.REDIS_POLICY</span> <span class="string">"volatile-lru"</span> <span class="string">&#125;&#125;</span></span><br><span class="line"><span class="literal">no</span><span class="bullet">-appendfsync-on-rewrite</span> <span class="literal">no</span></span><br><span class="line"><span class="string">auto-aof-rewrite-percentage</span> <span class="number">100</span></span><br><span class="line"><span class="string">auto-aof-rewrite-min-size</span> <span class="number">64</span><span class="string">mb</span></span><br><span class="line"><span class="string">aof-load-truncated</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">lua-time-limit</span> <span class="number">5000</span></span><br><span class="line"><span class="string">cluster-enabled</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">cluster-config-file</span> <span class="string">/opt/nodes.conf</span></span><br><span class="line"><span class="string">cluster-node-timeout</span> <span class="number">3000</span></span><br><span class="line"><span class="string">cluster-require-full-coverage</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">slowlog-log-slower-than</span> <span class="number">10000</span></span><br><span class="line"><span class="string">slowlog-max-len</span> <span class="number">128</span></span><br><span class="line"><span class="string">latency-monitor-threshold</span> <span class="number">0</span></span><br><span class="line"><span class="string">notify-keyspace-events</span> <span class="string">""</span></span><br><span class="line"><span class="string">hash-max-ziplist-entries</span> <span class="number">512</span></span><br><span class="line"><span class="string">hash-max-ziplist-value</span> <span class="number">64</span></span><br><span class="line"><span class="string">list-max-ziplist-size</span> <span class="bullet">-2</span></span><br><span class="line"><span class="string">list-compress-depth</span> <span class="number">0</span></span><br><span class="line"><span class="string">set-max-intset-entries</span> <span class="number">512</span></span><br><span class="line"><span class="string">zset-max-ziplist-entries</span> <span class="number">128</span></span><br><span class="line"><span class="string">zset-max-ziplist-value</span> <span class="number">64</span></span><br><span class="line"><span class="string">hll-sparse-max-bytes</span> <span class="number">3000</span></span><br><span class="line"><span class="string">activerehashing</span> <span class="literal">yes</span></span><br><span class="line"><span class="string">client-output-buffer-limit</span> <span class="string">normal</span> <span class="number">0</span> <span class="number">0</span> <span class="number">0</span></span><br><span class="line"><span class="string">client-output-buffer-limit</span> <span class="string">slave</span> <span class="number">256</span><span class="string">mb</span> <span class="number">64</span><span class="string">mb</span> <span class="number">60</span></span><br><span class="line"><span class="string">client-output-buffer-limit</span> <span class="string">pubsub</span> <span class="number">32</span><span class="string">mb</span> <span class="number">8</span><span class="string">mb</span> <span class="number">60</span></span><br><span class="line"><span class="string">hz</span> <span class="number">10</span></span><br><span class="line"><span class="string">aof-rewrite-incremental-fsync</span> <span class="literal">yes</span></span><br></pre></td></tr></table></figure></p>
+<p>执行docker命令构建镜像<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker build -t centos/redis-cluster .</span><br></pre></td></tr></table></figure></p>
+<h4 id="3-创建redis-cluster-pod"><a href="#3-创建redis-cluster-pod" class="headerlink" title="3. 创建redis cluster pod"></a>3. 创建redis cluster pod</h4><p>需要创建3组RS，端口分别为7000,7001,7002<br>创建命令<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl create -f redis-cluster.yaml</span><br></pre></td></tr></table></figure></p>
+<p>redis-cluster.yaml文件<br><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">extensions/v1beta1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ReplicaSet</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">  name:</span> <span class="string">redis-7000</span></span><br><span class="line"><span class="attr">  annotations:</span></span><br><span class="line"><span class="attr">    description:</span> <span class="string">"redis cluster service"</span></span><br><span class="line"><span class="attr">    clusterId:</span> <span class="string">"7000"</span></span><br><span class="line"><span class="attr">spec:</span> </span><br><span class="line"><span class="attr">  replicas:</span> <span class="number">2</span></span><br><span class="line"><span class="attr">  template:</span></span><br><span class="line"><span class="attr">    metadata:</span></span><br><span class="line"><span class="attr">      labels:</span> </span><br><span class="line"><span class="attr">        app:</span> <span class="string">redis</span></span><br><span class="line"><span class="attr">        name:</span> <span class="string">redis-7000</span></span><br><span class="line"><span class="attr">    spec:</span></span><br><span class="line"><span class="attr">      affinity:</span></span><br><span class="line"><span class="attr">        podAntiAffinity:</span></span><br><span class="line"><span class="attr">          requiredDuringSchedulingIgnoredDuringExecution:</span></span><br><span class="line"><span class="attr">          - labelSelector:</span></span><br><span class="line"><span class="attr">              matchExpressions:</span></span><br><span class="line"><span class="attr">              - key:</span> <span class="string">name</span></span><br><span class="line"><span class="attr">                operator:</span> <span class="string">In</span></span><br><span class="line"><span class="attr">                values:</span> </span><br><span class="line"><span class="bullet">                -</span> <span class="string">redis-7000</span></span><br><span class="line"><span class="attr">            topologyKey:</span> <span class="string">kubernetes.io/hostname</span></span><br><span class="line"><span class="attr">      hostNetwork:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">      containers:</span> </span><br><span class="line"><span class="attr">      - image:</span> <span class="string">centos/redis-cluster:latest</span></span><br><span class="line"><span class="attr">        name:</span> <span class="string">redis-cluster</span></span><br><span class="line"><span class="attr">        imagePullPolicy:</span> <span class="string">Never</span></span><br><span class="line"><span class="attr">        env:</span></span><br><span class="line"><span class="attr">        - name:</span> <span class="string">REDIS_CLUSTER_ID</span></span><br><span class="line"><span class="attr">          value:</span> <span class="string">"7000"</span></span><br><span class="line"><span class="attr">        - name:</span> <span class="string">REDIS_PORT</span></span><br><span class="line"><span class="attr">          value:</span> <span class="string">"7000"</span></span><br><span class="line"><span class="attr">        - name:</span> <span class="string">REDIS_MAXMEM</span></span><br><span class="line"><span class="attr">          valueFrom:</span></span><br><span class="line"><span class="attr">            configMapKeyRef:</span></span><br><span class="line"><span class="attr">              name:</span> <span class="string">redis-config</span></span><br><span class="line"><span class="attr">              key:</span> <span class="string">memory</span></span><br><span class="line"><span class="attr">        - name:</span> <span class="string">REDIS_PASS</span></span><br><span class="line"><span class="attr">          valueFrom:</span></span><br><span class="line"><span class="attr">            configMapKeyRef:</span></span><br><span class="line"><span class="attr">              name:</span> <span class="string">redis-config</span></span><br><span class="line"><span class="attr">              key:</span> <span class="string">password</span></span><br><span class="line"><span class="attr">        command:</span> <span class="string">["/bin/bash",</span> <span class="string">"-c"</span><span class="string">]</span></span><br><span class="line"><span class="attr">        args:</span> <span class="string">["</span> <span class="string">sleep</span> <span class="number">60</span><span class="string">;cd</span> <span class="string">/opt/data/dump/;</span> <span class="string">for</span> <span class="string">i</span> <span class="string">in</span> <span class="string">`ls|grep</span> <span class="bullet">-P</span> <span class="string">'^$(REDIS_CLUSTER_ID)'</span><span class="string">`;do</span> <span class="string">name=`date</span> <span class="string">+%T`;mv</span> <span class="string">$i</span> <span class="string">$name$i;done;</span> <span class="string">cd</span> <span class="string">/opt/data/conf/</span></span><br><span class="line"><span class="string">;</span> <span class="string">for</span> <span class="string">k</span> <span class="string">in</span> <span class="string">`ls|grep</span> <span class="bullet">-P</span> <span class="string">'^$(REDIS_CLUSTER_ID)'</span><span class="string">`;do</span> <span class="string">name=`date</span> <span class="string">+%T`;</span> <span class="string">mv</span> <span class="string">$k</span> <span class="string">$name$k;</span> <span class="string">done;</span> <span class="string">dockerize</span> <span class="bullet">-template</span> <span class="string">/opt/redis.tmpl:/opt/redis-3.2.9/redis-cluster.conf</span> <span class="string">/opt/redis-3.2.9/src/redis-server</span> <span class="string">/opt/redis-3.2.9/redis-cluster.conf"]</span>        <span class="attr">resources:</span></span><br><span class="line"><span class="attr">        requests:</span></span><br><span class="line"><span class="attr">            cpu:</span> <span class="number">1</span></span><br><span class="line"><span class="attr">            memory:</span> <span class="number">6144</span><span class="string">Mi</span></span><br><span class="line"><span class="attr">        volumeMounts:</span></span><br><span class="line"><span class="attr">        - mountPath:</span> <span class="string">/opt/data</span></span><br><span class="line"><span class="attr">          name:</span> <span class="string">redis-volume</span></span><br><span class="line"><span class="attr">      volumes:</span></span><br><span class="line"><span class="attr">      - name:</span> <span class="string">redis-volume</span></span><br><span class="line"><span class="attr">        hostPath:</span></span><br><span class="line"><span class="attr">          path:</span> <span class="string">/opt/redisData</span></span><br></pre></td></tr></table></figure></p>
+<p>redis-configmap.yaml<br><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ConfigMap</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">  name:</span> <span class="string">redis-config</span></span><br><span class="line"><span class="attr">data:</span></span><br><span class="line"><span class="attr">  memory:</span> <span class="string">"33554432"</span></span><br><span class="line"><span class="attr">  password:</span> <span class="string">"redisPassword"</span></span><br></pre></td></tr></table></figure></p>
+<ol start="4">
+<li>组建redis cluster集群、分槽，并添加slave节点</li>
+</ol>
+<p>组建redis cluster集群</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7000 -a RedisPass cluster meet 10.10.0.1 7001</span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7000 -a RedisPass cluster meet 10.10.0.1 7002</span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7000 -a RedisPass cluster meet 10.10.0.2 7000</span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7000 -a RedisPass cluster meet 10.10.0.2 7001</span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7000 -a RedisPass cluster meet 10.10.0.2 7002</span><br></pre></td></tr></table></figure>
+<p>分槽脚本</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">!/bin/bash</span></span><br><span class="line">for i in `seq 0 5461`</span><br><span class="line">do</span><br><span class="line">slot1=$&#123;slot1&#125;" "$&#123;i&#125;</span><br><span class="line">done</span><br><span class="line">echo $&#123;slot1&#125;</span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7000 -a RedisPass cluster addslots $&#123;slot1&#125;</span><br><span class="line"></span><br><span class="line">for a in `seq 5462 10922`</span><br><span class="line">do</span><br><span class="line">slot2=$&#123;slot2&#125;" "$&#123;a&#125;</span><br><span class="line">done</span><br><span class="line">echo $&#123;slot2&#125;</span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7001 -a RedisPass CLUSTER ADDSLOTS $&#123;slot2&#125;</span><br><span class="line"></span><br><span class="line">for k in `seq 10923 16383`</span><br><span class="line">do</span><br><span class="line">slot3=$&#123;slot3&#125;" "$&#123;k&#125;</span><br><span class="line">done</span><br><span class="line"></span><br><span class="line">/home/redis-3.2.9/src/redis-cli -h 10.10.0.1 -p 7002 -a RedisPass CLUSTER ADDSLOTS $&#123;slot3&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="部署中的问题"><a href="#部署中的问题" class="headerlink" title="部署中的问题"></a>部署中的问题</h3><ol>
+<li>redis cluster master故障后slave节点不能自动提升为master.<br>问题原因：由于部署pod或者pod中容器重启时间很快，导致redis集群未选举出新的master，所以无法自动把slave提升为master。redis集群选举请参考 <a href="https://redis.io/topics/cluster-spec" target="_blank" rel="noopener">redis规范</a><br>临时解决方法：延缓容器中redis服务的启动时间</li>
+<li>redis集群缩容时需要更新RS的maxmemory环境变量，更新后若容器故障重启，不会使用更新后的RS配置（delete pod 操作新配置会生效）。<br>解决方法：使用configmap配置环境变量</li>
+</ol>
+
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="http://nurhier.github.io/2017/08/03/kubernetes-deploy-redis-cluster/" title="使用kubernetes部署redis cluster" target="_blank" rel="external">http://nurhier.github.io/2017/08/03/kubernetes-deploy-redis-cluster/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://github.com/nurhier" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h3 class="media-heading"><a href="https://github.com/nurhier" target="_blank"><span class="text-dark">NurHier</span><small class="ml-1x">Developer &amp; Designer</small></a></h3>
+        <div>个人简介。</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+  <section id="comments">
+  	
+           
+    
+  </section>
+
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/2018/02/22/add-version-for-static-resource/" title="gulp编译maven生成版本号解决静态资源缓存问题"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/2017/07/19/migrate-zookeeper/" title="zookeeper集群在线迁移"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  <footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/nurhier" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="https://twitter.com/JoyHao08" target="_blank" title="Twitter" data-toggle=tooltip data-placement=top><i class="icon icon-twitter"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2020 NurHier
+        
+        <div class="publishby">
+        	Theme by <a href="https://github.com/cofess" target="_blank"> cofess </a>base on <a href="https://github.com/cofess/hexo-theme-pure" target="_blank">pure</a>.
+        </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+<script src="/js/plugin.min.js"></script>
+<script src="/js/application.js"></script>
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+<script src="/js/insight.js"></script>
+
+
+
+
+
+   
+
+
+
+
+   
+    
+  <!-- <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css"> -->
+  <script src="//cdn.jsdelivr.net/npm/gitalk@1.4.0/dist/gitalk.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+  <script type="text/javascript">
+  var gitalk = new Gitalk({
+    clientID: '31ae4f78238d89deeb26',
+    clientSecret: '090ddeb8eefb27caa0e8bdc6f7ad7cd83277e720',
+    repo: 'nurhier.github.io',
+    owner: 'nurhier',
+    admin: ['nurhier'],
+    id: md5(location.pathname),
+    distractionFreeMode: true
+  })
+  gitalk.render('comments')
+  </script>
+
+      
+
+
+
+
+
+
+
+</body>
+</html>

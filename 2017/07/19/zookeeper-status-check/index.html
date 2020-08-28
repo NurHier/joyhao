@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no,email=no,adress=no">
+  <!-- Color theme for statusbar -->
+  <meta name="theme-color" content="#000000">
+  <!-- 强制页面在当前窗口以独立页面显示,防止别人在框架里调用页面 -->
+  <meta http-equiv="window-target" content="_top">
+  
+  
+  <title>zookeeper状态查看工具 | Blog</title>
+  <meta name="description" content="本工具用于查看zookeeper集群的运行状态和节点的角色，并选中leader节点，通过 echo mntr|nc ${leaderIP} ${zkPort}  获取集群的信息。脚本运行的机器需要可免密码登录到各个zk节点。 1.代码实例12345678910111213141516171819202122232425#!/bin/bash# 查看zk运行状态nodeips=(10.10.0.10">
+<meta name="keywords" content="zookeeper">
+<meta property="og:type" content="article">
+<meta property="og:title" content="zookeeper状态查看工具">
+<meta property="og:url" content="http://nurhier.github.io/2017/07/19/zookeeper-status-check/index.html">
+<meta property="og:site_name" content="NurHier的日志">
+<meta property="og:description" content="本工具用于查看zookeeper集群的运行状态和节点的角色，并选中leader节点，通过 echo mntr|nc ${leaderIP} ${zkPort}  获取集群的信息。脚本运行的机器需要可免密码登录到各个zk节点。 1.代码实例12345678910111213141516171819202122232425#!/bin/bash# 查看zk运行状态nodeips=(10.10.0.10">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2020-08-28T09:00:03.296Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="zookeeper状态查看工具">
+<meta name="twitter:description" content="本工具用于查看zookeeper集群的运行状态和节点的角色，并选中leader节点，通过 echo mntr|nc ${leaderIP} ${zkPort}  获取集群的信息。脚本运行的机器需要可免密码登录到各个zk节点。 1.代码实例12345678910111213141516171819202122232425#!/bin/bash# 查看zk运行状态nodeips=(10.10.0.10">
+  <!-- Canonical links -->
+  <link rel="canonical" href="http://nurhier.github.io/2017/07/19/zookeeper-status-check/index.html">
+  
+    <link rel="alternate" href="/atom.xml" title="NurHier的日志" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png" type="image/x-icon">
+  
+  <link rel="stylesheet" href="/css/style.css">
+  
+  
+  
+  
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1.4.0/dist/gitalk.min.css">
+  
+</head>
+
+
+<body class="main-center theme-black" itemscope itemtype="http://schema.org/WebPage">
+  <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+  <div class="slimContent">
+    <div class="navbar-header">
+      
+      
+      <div class="profile-block text-center">
+        <a id="avatar" href="https://github.com/nurhier" target="_blank">
+          <img class="img-circle img-rotate" src="/images/avatar.jpg" width="200" height="200">
+        </a>
+        <h2 id="name" class="hidden-xs hidden-sm">NurHier</h2>
+        <h3 id="title" class="hidden-xs hidden-sm hidden-md">Developer &amp; Designer</h3>
+        <small id="location" class="text-muted hidden-xs hidden-sm"><i class="icon icon-map-marker"></i> Beijing, China</small>
+      </div>
+      
+      <div class="search" id="search-form-wrap">
+
+    <form class="search-form sidebar-form">
+        <div class="input-group">
+            <input type="text" class="search-form-input form-control" placeholder="搜索" />
+            <span class="input-group-btn">
+                <button type="submit" class="search-form-submit btn btn-flat" onclick="return false;"><i class="icon icon-search"></i></button>
+            </span>
+        </div>
+    </form>
+    <div class="ins-search">
+  <div class="ins-search-mask"></div>
+  <div class="ins-search-container">
+    <div class="ins-input-wrapper">
+      <input type="text" class="ins-search-input" placeholder="想要查找什么..." x-webkit-speech />
+      <button type="button" class="close ins-close ins-selectable" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+    </div>
+    <div class="ins-section-wrapper">
+      <div class="ins-section-container"></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+      <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#main-navbar" aria-controls="main-navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <nav id="main-navbar" class="collapse navbar-collapse" itemscope itemtype="http://schema.org/SiteNavigationElement" role="navigation">
+      <ul class="nav navbar-nav main-nav ">
+        
+        
+        <li class="menu-item menu-item-home">
+          <a href="/.">
+            
+            <i class="icon icon-home-fill"></i>
+            
+            <span class="menu-title">首页</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives">
+            
+            <i class="icon icon-archives-fill"></i>
+            
+            <span class="menu-title">归档</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories">
+            
+            <i class="icon icon-folder"></i>
+            
+            <span class="menu-title">分类</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags">
+            
+            <i class="icon icon-tags"></i>
+            
+            <span class="menu-title">标签</span>
+          </a>
+        </li>
+        
+        
+        <li class="menu-item menu-item-links">
+          <a href="/links">
+            
+            <i class="icon icon-friendship"></i>
+            
+            <span class="menu-title">友链</span>
+          </a>
+        </li>
+        
+      </ul>
+      
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/nurhier" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="https://twitter.com/JoyHao08" target="_blank" title="Twitter" data-toggle=tooltip data-placement=top><i class="icon icon-twitter"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    </nav>
+  </div>
+</header>
+
+  
+    <aside class="sidebar" itemscope itemtype="http://schema.org/WPSideBar">
+  <div class="slimContent">
+    
+      <div class="widget">
+    <h3 class="widget-title">公告</h3>
+    <div class="widget-body">
+        <div id="board">
+            <div class="content">
+                <p>欢迎交流与分享经验!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget-body">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/云计算/">云计算</a><span class="category-list-count">3</span><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/云计算/运维/">运维</a><span class="category-list-count">2</span></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/前端开发/">前端开发</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/日志收集/">日志收集</a><span class="category-list-count">1</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget-body">
+      <ul class="tag-list"><li class="tag-list-item"><a class="tag-list-link" href="/tags/docker/">docker</a><span class="tag-list-count">2</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/elk/">elk</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gulp/">gulp</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/kubernetes/">kubernetes</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/maven/">maven</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/redis/">redis</a><span class="tag-list-count">1</span></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/zookeeper/">zookeeper</a><span class="tag-list-count">2</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget-body tagcloud">
+      <a href="/tags/docker/" style="font-size: 14px;">docker</a> <a href="/tags/elk/" style="font-size: 13px;">elk</a> <a href="/tags/gulp/" style="font-size: 13px;">gulp</a> <a href="/tags/kubernetes/" style="font-size: 13px;">kubernetes</a> <a href="/tags/maven/" style="font-size: 13px;">maven</a> <a href="/tags/redis/" style="font-size: 13px;">redis</a> <a href="/tags/zookeeper/" style="font-size: 14px;">zookeeper</a>
+    </div>
+  </div>
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget-body">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">八月 2020</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/02/">二月 2018</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/08/">八月 2017</a><span class="archive-list-count">1</span></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2017/07/">七月 2017</a><span class="archive-list-count">3</span></li></ul>
+    </div>
+  </div>
+
+
+    
+      
+  <div class="widget">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget-body">
+      <ul class="recent-post-list list-unstyled no-thumbnail">
+        
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/日志收集/">日志收集</a>
+              </p>
+              <p class="item-title">
+                <a href="/2020/08/28/docker-install-elk/" class="title">1.ELK日志收集-Docker部署ELKF日志收集</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2020-08-28T05:07:35.000Z" itemprop="datePublished">2020-08-28</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/前端开发/">前端开发</a>
+              </p>
+              <p class="item-title">
+                <a href="/2018/02/22/add-version-for-static-resource/" class="title">gulp编译maven生成版本号解决静态资源缓存问题</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2018-02-22T10:42:35.000Z" itemprop="datePublished">2018-02-22</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/08/03/kubernetes-deploy-redis-cluster/" class="title">使用kubernetes部署redis cluster</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-08-03T14:42:35.000Z" itemprop="datePublished">2017-08-03</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a><i class="icon icon-angle-right"></i><a class="category-link" href="/categories/云计算/运维/">运维</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/07/19/migrate-zookeeper/" class="title">zookeeper集群在线迁移</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-07-19T12:45:23.000Z" itemprop="datePublished">2017-07-19</time>
+              </p>
+            </div>
+          </li>
+          
+          <li>
+            
+            <div class="item-inner">
+              <p class="item-category">
+                <a class="category-link" href="/categories/云计算/">云计算</a><i class="icon icon-angle-right"></i><a class="category-link" href="/categories/云计算/运维/">运维</a>
+              </p>
+              <p class="item-title">
+                <a href="/2017/07/19/zookeeper-status-check/" class="title">zookeeper状态查看工具</a>
+              </p>
+              <p class="item-date">
+                <time datetime="2017-07-19T12:42:35.000Z" itemprop="datePublished">2017-07-19</time>
+              </p>
+            </div>
+          </li>
+          
+      </ul>
+    </div>
+  </div>
+  
+
+    
+  </div>
+</aside>
+
+  
+  
+<main class="main" role="main">
+  <div class="content">
+  <article id="post-zookeeper-status-check" class="article article-type-post" itemscope itemtype="http://schema.org/BlogPosting">
+    
+    <div class="article-header">
+      
+        
+  
+    <h1 class="article-title" itemprop="name">
+      zookeeper状态查看工具
+    </h1>
+  
+
+      
+      <div class="article-meta">
+        <span class="article-date">
+    <i class="icon icon-calendar-check"></i>
+	<a href="/2017/07/19/zookeeper-status-check/" class="article-date">
+	  <time datetime="2017-07-19T12:42:35.000Z" itemprop="datePublished">2017-07-19</time>
+	</a>
+</span>
+        
+  <span class="article-category">
+    <i class="icon icon-folder"></i>
+    <a class="article-category-link" href="/categories/云计算/">云计算</a>►<a class="article-category-link" href="/categories/云计算/运维/">运维</a>
+  </span>
+
+        
+  <span class="article-tag">
+    <i class="icon icon-tags"></i>
+	<a class="article-tag-link" href="/tags/zookeeper/">zookeeper</a>
+  </span>
+
+
+        
+
+        <span class="post-comment"><i class="icon icon-comment"></i> <a href="/2017/07/19/zookeeper-status-check/#comments" class="article-comment-link">评论</a></span>
+        
+      </div>
+    </div>
+    <div class="article-entry marked-body" itemprop="articleBody">
+      
+        <p>本工具用于查看zookeeper集群的运行状态和节点的角色，并选中leader节点，通过 <code>echo mntr|nc ${leaderIP} ${zkPort}</code>  获取集群的信息。<br>脚本运行的机器需要可<strong>免密码登录</strong>到各个zk节点。</p>
+<h3 id="1-代码实例"><a href="#1-代码实例" class="headerlink" title="1.代码实例"></a>1.代码实例</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/bash</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看zk运行状态</span></span><br><span class="line"></span><br><span class="line">nodeips=(10.10.0.102 10.10.0.103 10.10.0.104)</span><br><span class="line">port=2183</span><br><span class="line">zkPath="/opt/zookeeper-3.4.8/bin"</span><br><span class="line">leaderIP=""</span><br><span class="line">for ip in $&#123;nodeips[@]&#125;</span><br><span class="line">do</span><br><span class="line">  echo $ip</span><br><span class="line">  info=`ssh root@$ip &lt;&lt; EOF</span><br><span class="line">    cd $&#123;zkPath&#125;</span><br><span class="line">    sh $&#123;zkPath&#125;/zkServer.sh status</span><br><span class="line">    exit 0</span><br><span class="line">EOF`</span><br><span class="line">  echo $info</span><br><span class="line">  role=`echo $info|awk -F ":" '&#123;print $2&#125;'|sed s/[[:space:]]//g`</span><br><span class="line">  if [ "$role"x == "leader"x ]; then</span><br><span class="line">    leaderIP=$ip</span><br><span class="line">  fi</span><br><span class="line">  echo "-------------------------------------"</span><br><span class="line">done</span><br><span class="line">echo "echo mntr|nc $&#123;leaderIP&#125; $&#123;port&#125;"</span><br><span class="line">ssh root@$&#123;leaderIP&#125; "cd $&#123;zkPath&#125;; echo mntr|nc $&#123;leaderIP&#125; $&#123;port&#125;"</span><br><span class="line">exit 0</span><br></pre></td></tr></table></figure>
+<h3 id="2-运行结果"><a href="#2-运行结果" class="headerlink" title="2. 运行结果"></a>2. 运行结果</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">[root@security tools]$sh zk-status.sh </span><br><span class="line">10.10.0.102</span><br><span class="line">Pseudo-terminal will not be allocated because stdin is not a terminal.</span><br><span class="line">ZooKeeper JMX enabled by default</span><br><span class="line">Using config: /opt/zookeeper-3.4.8/bin/../conf/zoo.cfg</span><br><span class="line">Mode: follower</span><br><span class="line">-------------------------------------</span><br><span class="line">10.10.0.103</span><br><span class="line">Pseudo-terminal will not be allocated because stdin is not a terminal.</span><br><span class="line">ZooKeeper JMX enabled by default</span><br><span class="line">Using config: /opt/zookeeper-3.4.8/bin/../conf/zoo.cfg</span><br><span class="line">Mode: leader</span><br><span class="line">-------------------------------------</span><br><span class="line">10.10.0.104</span><br><span class="line">Pseudo-terminal will not be allocated because stdin is not a terminal.</span><br><span class="line">ZooKeeper JMX enabled by default</span><br><span class="line">Using config: /opt/zookeeper-3.4.8/bin/../conf/zoo.cfg</span><br><span class="line">Mode: follower</span><br><span class="line">-------------------------------------</span><br><span class="line">echo mntr|nc 10.10.0.103 2183</span><br><span class="line">zk_version	3.4.8--1, built on 02/06/2016 03:18 GMT</span><br><span class="line">zk_avg_latency	0</span><br><span class="line">zk_max_latency	11</span><br><span class="line">zk_min_latency	0</span><br><span class="line">zk_packets_received	237879</span><br><span class="line">zk_packets_sent	237879</span><br><span class="line">zk_num_alive_connections	3</span><br><span class="line">zk_outstanding_requests	0</span><br><span class="line">zk_server_state	leader</span><br><span class="line">zk_znode_count	40</span><br><span class="line">zk_watch_count	2</span><br><span class="line">zk_ephemerals_count	0</span><br><span class="line">zk_approximate_data_size	11090</span><br><span class="line">zk_open_file_descriptor_count	33</span><br><span class="line">zk_max_file_descriptor_count	65535</span><br><span class="line">zk_followers	2</span><br><span class="line">zk_synced_followers	2</span><br><span class="line">zk_pending_syncs	0</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    <div class="article-footer">
+      <blockquote class="mt-2x">
+  <ul class="post-copyright list-unstyled">
+    
+    <li class="post-copyright-link hidden-xs">
+      <strong>本文链接：</strong>
+      <a href="http://nurhier.github.io/2017/07/19/zookeeper-status-check/" title="zookeeper状态查看工具" target="_blank" rel="external">http://nurhier.github.io/2017/07/19/zookeeper-status-check/</a>
+    </li>
+    
+    <li class="post-copyright-license">
+      <strong>版权声明： </strong> 本博客所有文章除特别声明外，均采用 <a href="http://creativecommons.org/licenses/by/4.0/deed.zh" target="_blank" rel="external">CC BY 4.0 CN协议</a> 许可协议。转载请注明出处！
+    </li>
+  </ul>
+</blockquote>
+
+
+<div class="panel panel-default panel-badger">
+  <div class="panel-body">
+    <figure class="media">
+      <div class="media-left">
+        <a href="https://github.com/nurhier" target="_blank" class="img-burn thumb-sm visible-lg">
+          <img src="/images/avatar.jpg" class="img-rounded w-full" alt="">
+        </a>
+      </div>
+      <div class="media-body">
+        <h3 class="media-heading"><a href="https://github.com/nurhier" target="_blank"><span class="text-dark">NurHier</span><small class="ml-1x">Developer &amp; Designer</small></a></h3>
+        <div>个人简介。</div>
+      </div>
+    </figure>
+  </div>
+</div>
+
+
+    </div>
+  </article>
+  
+    
+  <section id="comments">
+  	
+           
+    
+  </section>
+
+
+  
+</div>
+
+  <nav class="bar bar-footer clearfix" data-stick-bottom>
+  <div class="bar-inner">
+  
+  <ul class="pager pull-left">
+    
+    <li class="prev">
+      <a href="/2017/07/19/migrate-zookeeper/" title="zookeeper集群在线迁移"><i class="icon icon-angle-left" aria-hidden="true"></i><span>&nbsp;&nbsp;上一篇</span></a>
+    </li>
+    
+    
+    <li class="next">
+      <a href="/2017/07/10/hello-world/" title="hexo 命令"><span>下一篇&nbsp;&nbsp;</span><i class="icon icon-angle-right" aria-hidden="true"></i></a>
+    </li>
+    
+    
+  </ul>
+  
+  
+  
+  <div class="bar-right">
+    
+  </div>
+  </div>
+</nav>
+  
+
+
+</main>
+
+  <footer class="footer" itemscope itemtype="http://schema.org/WPFooter">
+	
+	
+    <ul class="social-links">
+    	
+        <li><a href="https://github.com/nurhier" target="_blank" title="Github" data-toggle=tooltip data-placement=top><i class="icon icon-github"></i></a></li>
+        
+        <li><a href="https://twitter.com/JoyHao08" target="_blank" title="Twitter" data-toggle=tooltip data-placement=top><i class="icon icon-twitter"></i></a></li>
+        
+        <li><a href="/atom.xml" target="_blank" title="Rss" data-toggle=tooltip data-placement=top><i class="icon icon-rss"></i></a></li>
+        
+    </ul>
+
+    <div class="copyright">
+    	
+        &copy; 2020 NurHier
+        
+        <div class="publishby">
+        	Theme by <a href="https://github.com/cofess" target="_blank"> cofess </a>base on <a href="https://github.com/cofess/hexo-theme-pure" target="_blank">pure</a>.
+        </div>
+    </div>
+</footer>
+  <script src="//cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js"></script>
+<script>
+window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
+</script>
+<script src="/js/plugin.min.js"></script>
+<script src="/js/application.js"></script>
+
+    <script>
+(function (window) {
+    var INSIGHT_CONFIG = {
+        TRANSLATION: {
+            POSTS: '文章',
+            PAGES: '页面',
+            CATEGORIES: '分类',
+            TAGS: '标签',
+            UNTITLED: '(未命名)',
+        },
+        ROOT_URL: '/',
+        CONTENT_URL: '/content.json',
+    };
+    window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+})(window);
+</script>
+<script src="/js/insight.js"></script>
+
+
+
+
+
+   
+
+
+
+
+   
+    
+  <!-- <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css"> -->
+  <script src="//cdn.jsdelivr.net/npm/gitalk@1.4.0/dist/gitalk.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+  <script type="text/javascript">
+  var gitalk = new Gitalk({
+    clientID: '31ae4f78238d89deeb26',
+    clientSecret: '090ddeb8eefb27caa0e8bdc6f7ad7cd83277e720',
+    repo: 'nurhier.github.io',
+    owner: 'nurhier',
+    admin: ['nurhier'],
+    id: md5(location.pathname),
+    distractionFreeMode: true
+  })
+  gitalk.render('comments')
+  </script>
+
+      
+
+
+
+
+
+
+
+</body>
+</html>
